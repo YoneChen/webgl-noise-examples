@@ -10,9 +10,8 @@ uniform vec2 u_resolution;
 uniform vec2 u_mouse;
 uniform float u_time;
 float random_value(vec2 st) {
-    return fract(sin(dot(st.xy,
-                         vec2(12.9898,78.233)))
-                 * 342348.5453123) * 0.2 + 0.1;
+    float h = dot(st,vec2(127.1,311.7));
+    return -1. + 2. * fract(sin(h) * 43758.5453123);
 }
 float noise_value (vec2 st) {
     vec2 i = floor(st);
@@ -20,9 +19,9 @@ float noise_value (vec2 st) {
 
     // Four corners in 2D of a tile
     float a = random_value(i);
-    float b = random_value(i + vec2(1., 0.));
-    float c = random_value(i + vec2(0., 1.));
-    float d = random_value(i + vec2(1., 1.));
+    float b = random_value(i + vec2(1, 0));
+    float c = random_value(i + vec2(0, 1));
+    float d = random_value(i + vec2(1, 1));
 
     // Smooth Interpolation
 
@@ -38,7 +37,7 @@ float noise_value (vec2 st) {
 }
 vec2 random_perlin(vec2 st){
     st = vec2( dot(st,vec2(127.1,311.7)),
-              dot(st,vec2(269.5,183.3)) );
+              dot(st,vec2(265.4,133.6)) );
     return -1.0 + 2.0*fract(sin(st)*43758.5453123);
 }
 float noise_perlin (vec2 st) {
