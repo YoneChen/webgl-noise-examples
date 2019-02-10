@@ -69,16 +69,32 @@ float noise_perlin (vec3 st) {
                mix(mix( d, f, u.x),
                    mix( g, h, u.x), u.y), u.z);
 }
-float noise_sum_abs_sin(vec3 p)
+float noise(vec3 p) {
+    return noise_perlin(p);
+}
+float noise_sum(vec3 p)
 {
     float f = 0.0;
     p = p * 4.0;
-    f += 1.0000 * abs(noise_perlin(p)); p = 2.0 * p;
-    f += 0.5000 * abs(noise_perlin(p)); p = 2.0 * p;
-    f += 0.2500 * abs(noise_perlin(p)); p = 2.0 * p;
-    f += 0.1250 * abs(noise_perlin(p)); p = 2.0 * p;
-    f += 0.0625 * abs(noise_perlin(p)); p = 2.0 * p;
-    // f = sin(f + p.z/16.0);
+    f += 1.0000 * noise(p); p = 2.0 * p;
+    f += 0.5000 * noise(p); p = 2.0 * p;
+    f += 0.2500 * noise(p); p = 2.0 * p;
+    f += 0.1250 * noise(p); p = 2.0 * p;
+    f += 0.0625 * noise(p); p = 2.0 * p;
+    // f = sin(f + p.x/16.0);
+
+    return f;
+}
+float noise_sum_abs(vec3 p)
+{
+    float f = 0.0;
+    p = p * 4.0;
+    f += 1.0000 * abs(noise(p)); p = 2.0 * p;
+    f += 0.5000 * abs(noise(p)); p = 2.0 * p;
+    f += 0.2500 * abs(noise(p)); p = 2.0 * p;
+    f += 0.1250 * abs(noise(p)); p = 2.0 * p;
+    f += 0.0625 * abs(noise(p)); p = 2.0 * p;
+    // f = sin(f + p.x/16.0);
 
     return f;
 }
@@ -86,7 +102,7 @@ void main() {
     vec2 st = gl_FragCoord.xy/u_resolution.xy;
     // st.x *= u_resolution.x/u_resolution.y;
 	// vec2 pos = vec2(st*15.0);
-    float n = noise_sum_abs_sin(vec3(st,u_time/30.0)); 
+    float n = noise_sum_abs(vec3(st,u_time/30.0)); 
     vec3 color = vec3(n,n,n);
 
     gl_FragColor = vec4(color,1.0);
