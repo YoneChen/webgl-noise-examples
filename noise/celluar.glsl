@@ -21,7 +21,7 @@ float get_min_dist(vec2 st) {
         for (int j = -1; j <= 1; j++) {
             vec2 neighbor = vec2(float(i),float(j));
             vec2 point = random2(i_st + neighbor);
-            point = .5 + .5 * sin(u_time + 6.2831*point);
+            point = .5 + .5 * sin(u_time * 5. + 6.2831*point);
             float d = length(point + neighbor - f_st);
             min_dist = min(min_dist,d);
         }
@@ -31,10 +31,10 @@ float get_min_dist(vec2 st) {
 void main() {
     vec2 st = gl_FragCoord.xy/u_resolution.xy;
     st.x *= u_resolution.x/u_resolution.y;
-    vec3 color = vec3(.0);
+    vec3 color = vec3(1.0);
 
     // Scale
-    st *= 10.;
+    st *= 20.;
 
 
     // vec2 point = .5 * random2(i_st) + .5 * sin(u_time + 16.234 * i_st );
@@ -44,7 +44,7 @@ void main() {
     // float dist = length(diff);
     float dist = get_min_dist(st);
     // Draw the min distance (distance field)
-    color += dist;
+    color -= dist;
 
     // Show isolines
     // color -= step(.7,abs(sin(27.0*dist)))*.5;
