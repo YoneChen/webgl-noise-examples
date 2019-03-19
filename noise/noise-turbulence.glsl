@@ -62,19 +62,6 @@ float noise_perlin (vec2 st) {
 float noise(vec2 p) {
     return noise_perlin(p);
 }
-float noise_sum_abs_sin(vec2 p)
-{
-    float f = 0.0;
-    p = p * 4.0;
-    float a = 1.;
-    for (int i = 0; i < 5; i++) {
-        f += a * abs(noise(p));
-        p = 2.0 * p;
-        a /= 2.;
-    }
-
-    return f;
-}
 float fbm(vec2 p)
 {
     float f = 0.0;
