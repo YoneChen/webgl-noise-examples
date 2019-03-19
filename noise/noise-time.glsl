@@ -76,24 +76,27 @@ float noise_sum(vec3 p)
 {
     float f = 0.0;
     p = p * 4.0;
-    f += 1.0000 * noise(p); p = 2.0 * p;
-    f += 0.5000 * noise(p); p = 2.0 * p;
-    f += 0.2500 * noise(p); p = 2.0 * p;
-    f += 0.1250 * noise(p); p = 2.0 * p;
-    f += 0.0625 * noise(p); p = 2.0 * p;
+    float a = 1.;
+    for (int i = 0; i < 5; i++) {
+        f += a * noise(p);
+        p = 2.0 * p;
+        a /= 2.;
+    }
     // f = sin(f + p.x/16.0);
 
-    return f;
+    return f * .5 + .5;
 }
 float noise_sum_abs(vec3 p)
 {
     float f = 0.0;
     p = p * 4.0;
-    f += 1.0000 * abs(noise(p)); p = 2.0 * p;
-    f += 0.5000 * abs(noise(p)); p = 2.0 * p;
-    f += 0.2500 * abs(noise(p)); p = 2.0 * p;
-    f += 0.1250 * abs(noise(p)); p = 2.0 * p;
-    f += 0.0625 * abs(noise(p)); p = 2.0 * p;
+    float a = 1.;
+    for (int i = 0; i < 5; i++) {
+        f += a * abs(noise(p));
+        p = 2.0 * p;
+        a /= 2.;
+    }
+
     // f = sin(f + p.x/16.0);
 
     return f;
@@ -103,7 +106,7 @@ void main() {
     // st.x *= u_resolution.x/u_resolution.y;
 	// vec2 pos = vec2(st*15.0);
     float n = noise_sum_abs(vec3(st,u_time/30.0)); 
-    vec3 color = vec3(n,n,n);
+    vec3 color = vec3(0,n,n);
 
     gl_FragColor = vec4(color,1.0);
 }

@@ -38,7 +38,7 @@ float noise_value (vec2 st) {
 vec2 random_perlin(vec2 st){
     st = vec2( dot(st,vec2(127.1,311.7)),
               dot(st,vec2(265.4,133.6)) );
-    return -1.0 + 2.0*fract(sin(st)*43758.5453123);
+    return -1. + 2.0*fract(sin(st)*43758.5453123);
 }
 float noise_perlin (vec2 st) {
     vec2 i = floor(st);
@@ -62,20 +62,7 @@ float noise_perlin (vec2 st) {
 float noise(vec2 p) {
     return noise_perlin(p);
 }
-float noise_sum(vec2 p)
-{
-    float f = 0.0;
-    p = p * 4.0;
-    float a = 1.;
-    for (int i = 0; i < 5; i++) {
-        f += a * noise(p);
-        p = 2.0 * p;
-        a /= 2.;
-    }
-
-    return f * .5 + .5;
-}
-float noise_sum_abs(vec2 p)
+float noise_sum_abs_sin(vec2 p)
 {
     float f = 0.0;
     p = p * 4.0;
@@ -88,11 +75,48 @@ float noise_sum_abs(vec2 p)
 
     return f;
 }
+float fbm(vec2 p)
+{
+    float f = 0.0;
+    float a = 1.;
+    for (int i = 0; i < 5; i++) {
+        f += a * noise(p);
+        p = 2.0 * p;
+        a /= 2.;
+    }
+
+    return f;
+}
+  float pattern( in vec2 p )
+  {
+      vec2 q = vec2( fbm( p + vec2(0.0,0.0) ),
+                     fbm( p + vec2(5.2,1.3) ) );
+
+      vec2 r = vec2( fbm( p + 4.0*q + vec2(1.7,9.2) ),
+                     fbm( p + 4.0*q + vec2(8.3,2.8) ) );
+
+      return fbm( p + 4.0*r );
+  }
+
+// float fbm ( in vec2 _st) {
+//     float v = 0.0;
+//     float a = 0.5;
+//     vec2 shift = vec2(100.0);
+//     // Rotate to reduce axial bias
+//     mat2 rot = mat2(cos(0.5), sin(0.5),
+//                     -sin(0.5), cos(0.50));
+//     for (int i = 0; i < 5; ++i) {
+//         v += a * noise(_st);
+//         _st = rot * _st * 2.0 + shift;
+//         a *= 0.5;
+//     }
+//     return v;
+// }
 void main() {
     vec2 st = gl_FragCoord.xy/u_resolution.xy;
     // st.x *= u_resolution.x/u_resolution.y;
 	// vec2 pos = vec2(st*15.0);
-    float n = noise_sum_abs(st); 
+    float n = pattern(st)*.5+.5; 
 
     gl_FragColor = vec4(n,n,n,1.0);
 }
