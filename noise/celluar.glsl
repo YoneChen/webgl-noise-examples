@@ -1,4 +1,4 @@
-// Author: @patriciogv
+// Author: @yonechen
 // Title: CellularNoise
 
 #ifdef GL_ES
@@ -28,23 +28,44 @@ float get_min_dist(vec2 st) {
     }
     return min_dist;
 }
+
+float get_gradient_dist(vec2 st) {
+    // Tile the space
+    float dists[9];
+    vec2 i_st = floor(st);
+    vec2 f_st = fract(st);
+    float min_dist = 10.;
+    for (int i = -1; i <= 1; i++) {
+        for (int j = -1; j <= 1; j++) {
+            vec2 neighbor = vec2(float(i),float(j));
+            vec2 point = random2(i_st + neighbor);
+            point = .5 + .5 * sin(u_time * 5. + 6.2831*point);
+            float d = length(point + neighbor - f_st);
+            dists[(i + 1) * 3 + (j + 1)] = d;
+            min_dist = min(min_dist,d);
+        }
+    }
+    float sec_min_dist = 10.;
+    for (int i = 0; i < 9; i++) {
+        if (dists[i] != min_dist) {
+            sec_min_dist = min(sec_min_dist,dists[i]);
+        }
+    }
+    
+    return sec_min_dist - min_dist;
+}
 void main() {
     vec2 st = gl_FragCoord.xy/u_resolution.xy;
     st.x *= u_resolution.x/u_resolution.y;
-    vec3 color = vec3(1.0);
+    vec3 color = vec3(0.0);
 
     // Scale
-    st *= 20.;
-
-
-    // vec2 point = .5 * random2(i_st) + .5 * sin(u_time + 16.234 * i_st );
-    // vec2 point = random2(i_st);
-    // vec2 diff = point - f_st;
+    st *= 8.;
 
     // float dist = length(diff);
-    float dist = get_min_dist(st);
+    float dist = get_gradient_dist(st);
     // Draw the min distance (distance field)
-    color -= dist;
+    color += dist;
 
     // Show isolines
     // color -= step(.7,abs(sin(27.0*dist)))*.5;

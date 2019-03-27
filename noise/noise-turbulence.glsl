@@ -1,5 +1,5 @@
 
-// Author:
+// Author:@yonechen
 // Title:
 
 #ifdef GL_ES
@@ -11,7 +11,7 @@ uniform vec2 u_mouse;
 uniform float u_time;
 float random_value(vec2 st) {
     float h = dot(st,vec2(127.1,311.7));
-    return -1. + 2. * fract(sin(h) * 43758.5453123);
+    return fract(sin(h) * 43758.5453123);
 }
 float noise_value (vec2 st) {
     vec2 i = floor(st);
@@ -60,50 +60,45 @@ float noise_perlin (vec2 st) {
     return mix(mix(a,b,u.x),mix(c,d,u.x),u.y);
 }
 float noise(vec2 p) {
-    return noise_perlin(p);
+    return noise_value(p);
 }
-float fbm(vec2 p)
+float fbm(in vec2 p)
 {
     float f = 0.0;
-    float a = 1.;
+    float a = .5;
     for (int i = 0; i < 5; i++) {
         f += a * noise(p);
         p = 2.0 * p;
-        a /= 2.;
+        a *= .5;
     }
 
     return f;
 }
   float pattern( in vec2 p )
   {
-      vec2 q = vec2( fbm( p + vec2(0.0,0.0) ),
+      vec2 q = vec2( fbm( p + vec2(0.0,0.0)),
                      fbm( p + vec2(5.2,1.3) ) );
 
-      vec2 r = vec2( fbm( p + 4.0*q + vec2(1.7,9.2) ),
-                     fbm( p + 4.0*q + vec2(8.3,2.8) ) );
+      vec2 r = vec2( fbm( p + 4.0*q + vec2(1.7,9.2)  + 0.126*u_time),
+                     fbm( p + 4.0*q + vec2(8.3,2.8)   + 0.15*u_time));
 
       return fbm( p + 4.0*r );
   }
-
-// float fbm ( in vec2 _st) {
-//     float v = 0.0;
-//     float a = 0.5;
-//     vec2 shift = vec2(100.0);
-//     // Rotate to reduce axial bias
-//     mat2 rot = mat2(cos(0.5), sin(0.5),
-//                     -sin(0.5), cos(0.50));
-//     for (int i = 0; i < 5; ++i) {
-//         v += a * noise(_st);
-//         _st = rot * _st * 2.0 + shift;
-//         a *= 0.5;
-//     }
-//     return v;
-// }
 void main() {
-    vec2 st = gl_FragCoord.xy/u_resolution.xy;
-    // st.x *= u_resolution.x/u_resolution.y;
-	// vec2 pos = vec2(st*15.0);
+    vec2 st = gl_FragCoord.xy/u_resolution.xy*3.;
     float n = pattern(st)*.5+.5; 
+    vec3 color = mix(vec3(0.101961,0.619608,0.666667),
+                vec3(0.666667,0.666667,0.498039),
+                clamp((n)*4.0,0.0,1.0));
 
-    gl_FragColor = vec4(n,n,n,1.0);
+    color = mix(color,
+                vec3(0,0,0.164706),
+                clamp((n)*2.0,0.0,1.0));
+
+    color = mix(color,
+                vec3(0.666667,1,1),
+                clamp((n*n*n)*1.0,0.0,1.0));
+
+    gl_FragColor = vec4(n*color,1.);
+    // gl_FragColor = vec4(n,n,n,1.0);
 }
