@@ -20,7 +20,7 @@ vec3 random( vec3 p ) {
         )*43758.5453
     );
 }
-float get_min_dist(vec3 st) {
+float get_F1(vec3 st) {
     // Tile the space
     vec3 i_st = floor(st);
     vec3 f_st = fract(st);
@@ -37,7 +37,7 @@ float get_min_dist(vec3 st) {
     }
     return pow(min_dist,2.);
 }
-float get_gradient_dist(vec3 st) {
+float get_F2_F1(vec3 st) {
     // Tile the space
     float dists[27];
     vec3 i_st = floor(st);
@@ -63,24 +63,48 @@ float get_gradient_dist(vec3 st) {
     
     return pow(sec_min_dist - min_dist,.5);
 }
-float noise_fbm_min_dist(vec3 p)
+float noise_fbm_F1(vec3 p)
 {
     float f = 0.0;
     float a = 0.7;
     for (int i = 0; i < 4; i++) {
-        f += a * get_min_dist(p);
+        f += a * get_F1(p);
         p = 2. * p;
         a /= 2.;
     }
 
     return f;
 }
-float noise_fbm_gradient_dist(vec3 p)
+float noise_fbm_F2_F1(vec3 p)
 {
     float f = 0.0;
     float a = 0.7;
     for (int i = 0; i < 4; i++) {
-        f += a * get_gradient_dist(p);
+        f += a * get_F2_F1(p);
+        p = 2. * p;
+        a /= 2.;
+    }
+
+    return f;
+}
+float noise_fbm_abs_F2_F1(vec3 p)
+{
+    float f = 0.0;
+    float a = 0.7;
+    for (int i = 0; i < 4; i++) {
+        f += a * abs(get_F2_F1(p)-.5);
+        p = 2. * p;
+        a /= 2.;
+    }
+
+    return f;
+}
+float noise_fbm_abs_F1(vec3 p)
+{
+    float f = 0.0;
+    float a = 0.7;
+    for (int i = 0; i < 4; i++) {
+        f += a * abs(get_F1(p)-.5);
         p = 2. * p;
         a /= 2.;
     }
@@ -98,28 +122,28 @@ void main() {
     // float dist = length(diff);
     float dist = 0.;
     // Draw the min distance (distance field)
-    vec3 st = vec3(uv,u_time/2.);
+    vec3 st = vec3(uv,u_time);
     if (uv.x < SCALE/2. && uv.y > SCALE/3.*2.) {
-        dist = get_min_dist(st);
+        dist = get_F1(st);
         color += dist;
     } else if (uv.x > SCALE/2. && uv.y > SCALE/3.*2.){
         color = vec3(1.0);
-        dist = get_min_dist(st);
+        dist = get_F1(st);
         color -= dist;
     } else if (uv.x < SCALE/2. && uv.y < SCALE/3.){
-        dist = noise_fbm_gradient_dist(st);
+        // color = vec3(1.0);
+        dist = noise_fbm_F1(st);
         color += dist;
     } else if (uv.x < SCALE/2. && uv.y > SCALE/3. && uv.y < SCALE/3.*2.){
-        dist = get_gradient_dist(st);
+        dist = get_F2_F1(st);
         color += dist;
     } else if (uv.x > SCALE/2. && uv.y > SCALE/3. && uv.y < SCALE/3.*2.){
         color = vec3(1.0);
-        dist = get_gradient_dist(st);
+        dist = get_F2_F1(st);
         color -= dist;
     } else if (uv.x > SCALE/2. && uv.y < SCALE/3.){
-        color = vec3(1.0);
-        dist = noise_fbm_min_dist(st);
-        color -= dist;
+        dist = noise_fbm_abs_F1(st);
+        color += dist;
     }
 
     // Show isolines

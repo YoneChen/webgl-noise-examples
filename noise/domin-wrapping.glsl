@@ -76,13 +76,14 @@ float fbm(in vec2 p)
 }
   float pattern( in vec2 p )
   {
-      vec2 q = vec2( fbm( p + vec2(0.0,0.0)),
-                     fbm( p + vec2(5.2,1.3) ) );
+      vec2 q = vec2( fbm( p),
+                     fbm( p ) );
 
-      vec2 r = vec2( fbm( p + 4.0*q + vec2(1.7,9.2)  + 0.126*u_time),
-                     fbm( p + 4.0*q + vec2(8.3,2.8)   + 0.15*u_time));
+      vec2 r = vec2( fbm( p + 1.0*q + 0.126*u_time),
+                     fbm( p + 1.0*q + 0.15*u_time));
 
-      return fbm( p + 4.0*r );
+      return fbm( p + 1.0*r );
+      
   }
 void main() {
     vec2 st = gl_FragCoord.xy/u_resolution.xy*3.;

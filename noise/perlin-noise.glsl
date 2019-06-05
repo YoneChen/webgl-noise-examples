@@ -1,5 +1,5 @@
-// Author:
-// Title:
+// Author: yonechen
+// Title: nosie with time
 
 #ifdef GL_ES
 precision mediump float;
@@ -39,8 +39,11 @@ float noise_value (in vec3 st) {
                    mix( g, h, u.x), u.y), u.z);
 }
 vec3 random_perlin(vec3 st){
-    st = vec3( dot(st,vec3(127.1,311.7,69.5)),
-              dot(st,vec3(269.5,183.3,132.7)), dot(st,vec3(247.3,108.5,96.5)) );
+    st = vec3(
+            dot(st,vec3(127.1,311.7,69.5)),
+            dot(st,vec3(269.5,183.3,132.7)), 
+            dot(st,vec3(247.3,108.5,96.5)) 
+            );
     return -1.0 + 2.0*fract(sin(st)*43758.5453123);
 }
 float noise_perlin (vec3 st) {
@@ -72,26 +75,26 @@ float noise_perlin (vec3 st) {
 float noise(vec3 p) {
     return noise_perlin(p);
 }
-float noise_sum(vec3 p)
+float noise_fbm(vec3 p)
 {
     float f = 0.0;
     p = p * 4.0;
-    float a = 1.;
-    for (int i = 0; i < 5; i++) {
+    float a = 2.;
+    for (int i = 0; i < 6; i++) {
         f += a * noise(p);
         p = 2.0 * p;
         a /= 2.;
     }
-    // f = sin(f + p.x/16.0);
+    // f = sin(f + p.x/1000.0);
 
     return f * .5 + .5;
 }
-float noise_sum_abs(vec3 p)
+float noise_fbm_abs(vec3 p)
 {
     float f = 0.0;
     p = p * 4.0;
     float a = 1.;
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 6; i++) {
         f += a * abs(noise(p));
         p = 2.0 * p;
         a *= .5;
@@ -105,8 +108,21 @@ void main() {
     vec2 st = gl_FragCoord.xy/u_resolution.xy;
     // st.x *= u_resolution.x/u_resolution.y;
 	// vec2 pos = vec2(st*15.0);
-    float n = noise_sum_abs(vec3(st,u_time/30.0)); 
-    vec3 color = vec3(0,1.-n,1.-n);
+    float n = 0.;
+    vec3 color = vec3(0.);
+    if (st.x < .5 && st.y > .5) {
+        n = noise(vec3(st,u_time/10.0)*16.)* .5 + .5; 
+        color = vec3(n);
+    } else if (st.x < .5 && st.y < .5) {
+        n = noise_fbm_abs(vec3(st,u_time/10.0));
+        color = vec3(n);
+    } else if (st.x > .5 && st.y > .5) {
+        n = noise_fbm(vec3(st,u_time/10.0)); 
+        color = vec3(n);
+    } else if (st.x >.5 && st.y < .5) {
+        n = noise_fbm_abs(vec3(st,u_time/10.0)); 
+        color = vec3(1.-n);
+    }
 
     gl_FragColor = vec4(color,1.0);
 }
