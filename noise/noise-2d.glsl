@@ -36,9 +36,14 @@ float noise_value (vec2 st) {
     //         (d - b) * u.x * u.y;
 }
 vec2 random_perlin(vec2 st){
-    st = vec2( dot(st,vec2(127.1,311.7)),
-              dot(st,vec2(265.4,133.6)) );
-    return -1.0 + 2.0*fract(sin(st)*43758.5453123);
+    return  -1.0 + 2.0 * fract(
+        sin(
+            vec2(
+                dot(st,vec2(127.1,311.7)),
+                dot(st,vec2(269.5,183.3))
+            )
+        )*43758.5453
+    );
 }
 float noise_perlin (vec2 st) {
     vec2 i = floor(st);
@@ -74,6 +79,7 @@ float noise_sum(vec2 p)
     }
 
     return f * .5 + .5;
+
 }
 float noise_sum_abs(vec2 p)
 {
@@ -92,7 +98,7 @@ void main() {
     vec2 st = gl_FragCoord.xy/u_resolution.xy;
     // st.x *= u_resolution.x/u_resolution.y;
 	// vec2 pos = vec2(st*15.0);
-    float n = noise_sum_abs(st); 
+    float n = noise_sum(st); 
 
     gl_FragColor = vec4(n,n,n,1.0);
 }
