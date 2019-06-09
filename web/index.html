@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,6 +11,7 @@
             padding: 0;
             margin: 0;
         }
+
         #app {
             position: absolute;
             left: 0;
@@ -20,6 +22,7 @@
         }
     </style>
 </head>
+
 <body>
     <script src="lib/three.min.js"></script>
     <script src="lib/OrbitControls.js"></script>
@@ -27,75 +30,75 @@
     <script>
         const ColorMapShader = {
             uniforms: {
-                "scale": { value: new THREE.Vector2( 1, 1 ) },
-                "offset": { value: new THREE.Vector2( 0, 0 ) },
+                "scale": { value: new THREE.Vector2(1, 1) },
+                "offset": { value: new THREE.Vector2(0, 0) },
                 "time": { value: 1.0 },
             },
             vertexShader: `
-                varying vec2 vUv;
-                uniform vec2 scale;
-                uniform vec2 offset;
-        
-                void main( void ) {
-                    vUv = uv * scale + offset;
-                    gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
-                }
-            `,
+        varying vec2 vUv;
+        uniform vec2 scale;
+        uniform vec2 offset;
+
+        void main( void ) {
+            vUv = uv * scale + offset;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+        }
+    `,
             fragmentShader: `
-                varying vec2 vUv;
-                uniform float time;
-                vec3 random_perlin( vec3 p ) {
-                    p = vec3(
-                            dot(p,vec3(127.1,311.7,69.5)),
-                            dot(p,vec3(269.5,183.3,132.7)), 
-                            dot(p,vec3(247.3,108.5,96.5)) 
-                            );
-                    return -1.0 + 2.0*fract(sin(p)*43758.5453123);
-                }
-                float noise_perlin (vec3 st) {
-                    vec3 i = floor(st);
-                    vec3 s = fract(st);
+        varying vec2 vUv;
+        uniform float time;
+        vec3 random_perlin( vec3 p ) {
+            p = vec3(
+                    dot(p,vec3(127.1,311.7,69.5)),
+                    dot(p,vec3(269.5,183.3,132.7)), 
+                    dot(p,vec3(247.3,108.5,96.5)) 
+                    );
+            return -1.0 + 2.0*fract(sin(p)*43758.5453123);
+        }
+        float noise_perlin (vec3 st) {
+            vec3 i = floor(st);
+            vec3 s = fract(st);
 
-                    // Four corners in 3D of a tile
-                    float a = dot(random_perlin(i),s);
-                    float b = dot(random_perlin(i + vec3(1, 0, 0)),s - vec3(1, 0, 0));
-                    float c = dot(random_perlin(i + vec3(0, 1, 0)),s - vec3(0, 1, 0));
-                    float d = dot(random_perlin(i + vec3(0, 0, 1)),s - vec3(0, 0, 1));
-                    float e = dot(random_perlin(i + vec3(1, 1, 0)),s - vec3(1, 1, 0));
-                    float f = dot(random_perlin(i + vec3(1, 0, 1)),s - vec3(1, 0, 1));
-                    float g = dot(random_perlin(i + vec3(0, 1, 1)),s - vec3(0, 1, 1));
-                    float h = dot(random_perlin(i + vec3(1, 1, 1)),s - vec3(1, 1, 1));
+            // 8 corners in 3D of a tile
+            float a = dot(random_perlin(i),s);
+            float b = dot(random_perlin(i + vec3(1, 0, 0)),s - vec3(1, 0, 0));
+            float c = dot(random_perlin(i + vec3(0, 1, 0)),s - vec3(0, 1, 0));
+            float d = dot(random_perlin(i + vec3(0, 0, 1)),s - vec3(0, 0, 1));
+            float e = dot(random_perlin(i + vec3(1, 1, 0)),s - vec3(1, 1, 0));
+            float f = dot(random_perlin(i + vec3(1, 0, 1)),s - vec3(1, 0, 1));
+            float g = dot(random_perlin(i + vec3(0, 1, 1)),s - vec3(0, 1, 1));
+            float h = dot(random_perlin(i + vec3(1, 1, 1)),s - vec3(1, 1, 1));
 
-                    // Smooth Interpolation
+            // Smooth Interpolation
 
-                    // Cubic Hermine Curve.  Same as SmoothStep()
-                    // vec2 u = f*f*(3.0-2.0*f);
-                    vec3 u = smoothstep(0.,1.,s);
+            // Cubic Hermine Curve.  Same as SmoothStep()
+            // vec2 u = f*f*(3.0-2.0*f);
+            vec3 u = smoothstep(0.,1.,s);
 
-                    // Mix 8 coorners percentages
-                    return mix(mix(mix( a, b, u.x),
-                                mix( c, e, u.x), u.y),
-                            mix(mix( d, f, u.x),
-                                mix( g, h, u.x), u.y), u.z);
-                }
-                float noise_turbulence(vec3 p)
-                {
-                    float f = 0.0;
-                    float a = 1.;
-                    p = 4.0 * p;
-                    for (int i = 0; i < 5; i++) {
-                        f += a * abs(noise_perlin(p));
-                        p = 2.0 * p;
-                        a /= 2.;
-                    }
-                    return f;
-                }
-                void main( void ) {
-                    float c1 = noise_turbulence(vec3(vUv, time/10.0));
-                    vec3 color = vec3(1.5*c1, 1.5*c1*c1*c1, c1*c1*c1*c1*c1*c1);
-                    gl_FragColor = vec4( color, 1.0 );
-                }
-            `
+            // Mix 8 coorners percentages
+            return mix(mix(mix( a, b, u.x),
+                        mix( c, e, u.x), u.y),
+                    mix(mix( d, f, u.x),
+                        mix( g, h, u.x), u.y), u.z);
+        }
+        float noise_turbulence(vec3 p)
+        {
+            float f = 0.0;
+            float a = 1.;
+            p = 4.0 * p;
+            for (int i = 0; i < 5; i++) {
+                f += a * abs(noise_perlin(p));
+                p = 2.0 * p;
+                a /= 2.;
+            }
+            return f;
+        }
+        void main( void ) {
+            float c1 = noise_turbulence(vec3(vUv, time/10.0));
+            vec3 color = vec3(1.5*c1, 1.5*c1*c1*c1, c1*c1*c1*c1*c1*c1);
+            gl_FragColor = vec4( color, 1.0 );
+        }
+    `
         };
     </script>
     <script>
@@ -108,7 +111,7 @@
                 const scene = new THREE.Scene();
                 // Initialize the camera
                 const camera = new THREE.PerspectiveCamera(fov, window.innerWidth / window.innerHeight, 0.1, far);
-				camera.position.set( - 120, 80, 20 );
+                camera.position.set(- 120, 80, 20);
                 scene.add(camera);
                 // Initialize the renderer
                 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -131,11 +134,11 @@
                     camera.updateProjectionMatrix();
                     renderer.setSize(window.innerWidth, window.innerHeight);
                 }, false);
-                new THREE.OrbitControls( camera, renderer.domElement );
+                new THREE.OrbitControls(camera, renderer.domElement);
                 renderer.setAnimationLoop(() => {
                     const delta = clock.getDelta();
                     this.update(delta);
-                	renderer.setRenderTarget( null );
+                    renderer.setRenderTarget(null);
                     renderer.render(scene, camera);
                 });
             }
@@ -144,24 +147,25 @@
                 this.addBall();
             }
             update(delta) {
-                this.uniformsNoise[ 'time' ].value += delta;
+                this.uniformsNoise['time'].value += delta;
                 this._renderNoise();
             }
-            initNoise(scene, renderer) {
-                const cameraOrtho = new THREE.OrthographicCamera( window.innerWidth / - 2, window.innerWidth / 2, window.innerHeight / 2, window.innerHeight / - 2, - 10000, 10000 );
-                const colorMapMaterial = new THREE.ShaderMaterial( {
+            initNoise() {
+                const { scene, renderer } = this;
+                const cameraOrtho = new THREE.OrthographicCamera(window.innerWidth / - 2, window.innerWidth / 2, window.innerHeight / 2, window.innerHeight / - 2, - 10000, 10000);
+                const colorMapMaterial = new THREE.ShaderMaterial({
                     ...ColorMapShader,
                     uniforms: {
                         ...ColorMapShader.uniforms,
-                        scale: { value: new THREE.Vector2( 1, 1 ) }
+                        scale: { value: new THREE.Vector2(1, 1) }
                     },
-					lights: false
-                } );
+                    lights: false
+                });
 
-                const plane = new THREE.PlaneBufferGeometry( window.innerWidth, window.innerHeight );
-                const noise = new THREE.Mesh( plane, colorMapMaterial );
-                scene.add( noise );
-                const colorMap = new THREE.WebGLRenderTarget( 512, 512 );
+                const plane = new THREE.PlaneBufferGeometry(window.innerWidth, window.innerHeight);
+                const noise = new THREE.Mesh(plane, colorMapMaterial);
+                scene.add(noise);
+                const colorMap = new THREE.WebGLRenderTarget(512, 512);
                 colorMap.texture.generateMipmaps = false;
                 colorMap.texture.wrapS = colorMap.texture.wrapT = THREE.RepeatWrapping;
                 this.noise = noise;
@@ -173,32 +177,34 @@
             _renderNoise() {
                 const { scene, noise, colorMap, renderer, cameraOrtho } = this;
                 noise.visible = true;
-                renderer.setRenderTarget( colorMap );
+                renderer.setRenderTarget(colorMap);
                 renderer.clear();
-                renderer.render( scene, cameraOrtho );
+                renderer.render(scene, cameraOrtho);
                 noise.visible = false;
             }
             addLight() {
                 const { scene } = this;
                 scene.add(new THREE.AmbientLight(0xcccccc));
-                const directionalLight = new THREE.DirectionalLight( 0xffffff, 0.08 );
-                directionalLight.position.set( 500, 2000, 0 );
-                scene.add( directionalLight );
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.08);
+                directionalLight.position.set(500, 2000, 0);
+                scene.add(directionalLight);
             }
             addBall() {
-                const { scene, renderer } = this;
-                this.initNoise(scene, renderer);
-                const geometry = new THREE.SphereBufferGeometry(50, 32, 32); // 创建一个半径为50的球体
-                const material = new THREE.MeshPhongMaterial( {
+                const { scene } = this;
+                this.initNoise();
+                // create a ball
+                const geometry = new THREE.SphereBufferGeometry(50, 32, 32);
+                const material = new THREE.MeshPhongMaterial({
                     shininess: 5,
                     map: this.colorMap.texture
-                } );
-                const ball = new THREE.Mesh( geometry, material );
-                ball.rotation.set(0,-Math.PI,0);
+                });
+                const ball = new THREE.Mesh(geometry, material);
+                ball.rotation.set(0, -Math.PI, 0);
                 scene.add(ball);
             }
         }
         new App(document.getElementById('app'));
     </script>
 </body>
+
 </html>
