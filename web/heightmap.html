@@ -1,0 +1,599 @@
+<!DOCTYPE HTML>
+<html lang="en">
+
+<head>
+    <title>noise - height mapping</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <style type="text/css">
+        body {
+            position: relative;
+            background: #000;
+            color: #999;
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
+            font-family: georgia;
+            font-size: 1em;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app"></div>
+    <script src="lib/three.min.js"></script>
+    <script src="lib/OrbitControls.js"></script>
+
+    <script>
+        /**
+* @author alteredq / http://alteredqualia.com/
+*
+* Normal map shader
+* - compute normals from heightmap
+*/
+
+        THREE.NormalMapShader = {
+
+            uniforms: {
+
+                "heightMap": { value: null },
+                "resolution": { value: new THREE.Vector2(512, 512) },
+                "scale": { value: new THREE.Vector2(1, 1) },
+                "height": { value: 0.05 }
+
+            },
+
+            vertexShader: [
+
+                "varying vec2 vUv;",
+
+                "void main() {",
+
+                "vUv = uv;",
+                "gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+
+                "}"
+
+            ].join("\n"),
+
+            fragmentShader: [
+
+                "uniform float height;",
+                "uniform vec2 resolution;",
+                "uniform sampler2D heightMap;",
+
+                "varying vec2 vUv;",
+
+                "void main() {",
+
+                "float val = texture2D( heightMap, vUv ).x;",
+
+                "float valU = texture2D( heightMap, vUv + vec2( 1.0 / resolution.x, 0.0 ) ).x;",
+                "float valV = texture2D( heightMap, vUv + vec2( 0.0, 1.0 / resolution.y ) ).x;",
+
+                "gl_FragColor = vec4( ( 0.5 * normalize( vec3( val - valU, val - valV, height  ) ) + 0.5 ), 1.0 );",
+
+                "}"
+
+            ].join("\n")
+
+        };
+
+    </script>
+
+    <script>
+
+        /**
+* @author alteredq / http://alteredqualia.com/
+*
+* Normal map shader
+* - compute normals from heightmap
+*/
+
+        const HeightMapShader = {
+
+            uniforms: {
+                "resolution": { value: new THREE.Vector2(512, 512) },
+                "scale": { value: new THREE.Vector2(1, 1) },
+                "offset": { value: new THREE.Vector2(0, 0) }
+
+            },
+
+            vertexShader: `
+		varying vec2 vUv;
+		uniform vec2 scale;
+		uniform vec2 offset;
+
+		void main( void ) {
+
+			vUv = uv * scale + offset;
+			gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+
+		}
+	`,
+
+            fragmentShader: `
+		varying vec2 vUv;
+		vec2 random( vec2 p ) {
+			return fract(
+				sin(
+					vec2(
+						dot(p,vec2(127.1,311.7)),
+						dot(p,vec2(269.5,183.3))
+					)
+				)*43758.5453
+			);
+		}
+		float noise_perlin (vec2 st) {
+			vec2 i = floor(st);
+			vec2 f = fract(st);
+
+			// Four corners in 2D of a tile
+			float a = dot(random(i),f);
+			float b = dot(random(i + vec2(1., 0.)),f - vec2(1., 0.));
+			float c = dot(random(i + vec2(0., 1.)),f - vec2(0., 1.));
+			float d = dot(random(i + vec2(1., 1.)),f - vec2(1., 1.));
+
+			// Smooth Interpolation
+
+			// Cubic Hermine Curve.  Same as SmoothStep()
+			// vec2 u = f*f*(3.0-2.0*f);
+			vec2 u = smoothstep(0.,1.,f);
+
+			// Mix 4 coorners percentages
+			return mix(mix(a,b,u.x),mix(c,d,u.x),u.y);
+		}
+		float get_F1(vec2 st) {
+			// Tile the space
+			vec2 i_st = floor(st);
+			vec2 f_st = fract(st);
+			float min_dist = 1.;
+			for (int i = -1; i <= 1; i++) {
+				for (int j = -1; j <= 1; j++) {
+					vec2 neighbor = vec2(float(i),float(j));
+					vec2 point = random(i_st + neighbor);
+					float d = length(point + neighbor - f_st);
+					min_dist = min(min_dist,d);
+				}
+			}
+			return pow(min_dist,2.);
+		}
+		float get_F2_F1(vec2 st) {
+			// Tile the space
+			float dists[27];
+			vec2 i_st = floor(st);
+			vec2 f_st = fract(st);
+			float min_dist = 10.;
+			for (int i = -1; i <= 1; i++) {
+				for (int j = -1; j <= 1; j++) {
+					vec2 neighbor = vec2(float(i),float(j));
+					vec2 point = random(i_st + neighbor);
+					float d = length(point + neighbor - f_st);
+					dists[(i + 1) * 3 + (j + 1) ] = d;
+					min_dist = min(min_dist,d);
+				}
+			}
+			float sec_min_dist = 10.;
+			for (int i = 0; i < 9; i++) {
+				if (dists[i] != min_dist) {
+					sec_min_dist = min(sec_min_dist,dists[i]);
+				}
+			}
+			
+			return pow(sec_min_dist - min_dist,.5);
+		}
+		float noise_sum_abs(vec2 p)
+		{
+			float f = 0.0;
+			p = p * 4.0;
+			float a = 1.;
+			for (int i = 0; i < 5; i++) {
+				f += a * abs(noise_perlin(p));
+				p = 2.0 * p;
+				a /= 2.;
+			}
+
+			return f;
+		}
+		void main( void ) {
+			vec3 color = vec3(0.0);
+        	float dist = get_F2_F1(vUv);
+        	color += dist;
+
+			gl_FragColor = vec4( color, 1.0 );
+
+		}
+	`
+
+        };
+    </script>
+    <script>
+        TerrainShader = {
+
+            uniforms: THREE.UniformsUtils.merge([
+                THREE.UniformsLib["lights"],
+
+                {
+
+                    "tDiffuse": { value: null },
+                    "tNormal": { value: null },
+                    "tDisplacement": { value: null },
+
+                    "uNormalScale": { value: 1.0 },
+
+                    "uDisplacementBias": { value: 0.0 },
+                    "uDisplacementScale": { value: 1.0 },
+
+                    "diffuse": { value: new THREE.Color(0xeeeeee) },
+                    "specular": { value: new THREE.Color(0x111111) },
+                    "shininess": { value: 30 },
+                    "opacity": { value: 1 },
+
+                    "uRepeatBase": { value: new THREE.Vector2(1, 1) },
+                    "uRepeatOverlay": { value: new THREE.Vector2(1, 1) }
+
+                }
+
+            ]),
+
+            fragmentShader: [
+
+                "uniform vec3 diffuse;",
+                "uniform vec3 specular;",
+                "uniform float shininess;",
+                "uniform float opacity;",
+
+                "uniform sampler2D tDiffuse;",
+                "uniform sampler2D tNormal;",
+                "uniform sampler2D tDisplacement;",
+
+                "uniform float uNormalScale;",
+
+                "uniform vec2 uRepeatOverlay;",
+                "uniform vec2 uRepeatBase;",
+
+                "uniform vec2 uOffset;",
+
+                "varying vec3 vNormal;",
+                "varying vec2 vUv;",
+
+                "varying vec3 vViewPosition;",
+
+                THREE.ShaderChunk["common"],
+                THREE.ShaderChunk["lights_pars_begin"],
+
+                "void main() {",
+
+                "vec3 outgoingLight = vec3( 0.0 );",	// outgoing light does not have an alpha, the surface does
+                "vec4 diffuseColor = vec4( diffuse, opacity );",
+
+                "vec3 specularTex = vec3( 1.0 );",
+
+                "vec2 uvOverlay = uRepeatOverlay * vUv;",
+                "vec2 uvBase = uRepeatBase * vUv;",
+
+                "diffuseColor *= texture2D( tDiffuse, uvOverlay );",
+
+                "vec3 normal = normalize( vNormal );",
+                "vec3 viewPosition = normalize( vViewPosition );",
+
+                "vec3 totalDiffuseLight = vec3( 0.0 );",
+                "vec3 totalSpecularLight = vec3( 0.0 );",
+
+                // directional lights
+
+                "#if NUM_DIR_LIGHTS > 0",
+
+                "vec3 dirDiffuse = vec3( 0.0 );",
+                "vec3 dirSpecular = vec3( 0.0 );",
+
+                "for( int i = 0; i < NUM_DIR_LIGHTS; i++ ) {",
+
+                "vec3 dirVector = directionalLights[ i ].direction;",
+                "vec3 dirHalfVector = normalize( dirVector + viewPosition );",
+
+                "float dirDotNormalHalf = max( dot( normal, dirHalfVector ), 0.0 );",
+                "float dirDiffuseWeight = max( dot( normal, dirVector ), 0.0 );",
+
+                "float dirSpecularWeight = specularTex.r * max( pow( dirDotNormalHalf, shininess ), 0.0 );",
+
+                "totalDiffuseLight += directionalLights[ i ].color * dirDiffuseWeight;",
+                "totalSpecularLight += directionalLights[ i ].color * specular * dirSpecularWeight * dirDiffuseWeight;",
+
+                "}",
+
+                "#endif",
+
+                "outgoingLight += diffuseColor.xyz * ( totalDiffuseLight + ambientLightColor + totalSpecularLight);",
+
+                "gl_FragColor = vec4( outgoingLight, 1. );",	// TODO, this should be pre-multiplied to allow for bright highlights on very transparent objects
+
+                "}"
+
+            ].join("\n"),
+
+            vertexShader: [
+
+                "attribute vec4 tangent;",
+
+                "uniform vec2 uRepeatBase;",
+
+                "uniform sampler2D tNormal;",
+
+                "#ifdef VERTEX_TEXTURES",
+
+                "uniform sampler2D tDisplacement;",
+                "uniform float uDisplacementScale;",
+                "uniform float uDisplacementBias;",
+
+                "#endif",
+
+                "varying vec3 vNormal;",
+                "varying vec2 vUv;",
+
+                "varying vec3 vViewPosition;",
+
+                "void main() {",
+
+                "vNormal = normalize( normalMatrix * normal );",
+
+                // texture coordinates
+
+                "vUv = uv;",
+
+                "vec2 uvBase = uv * uRepeatBase;",
+
+                // displacement mapping
+
+                "#ifdef VERTEX_TEXTURES",
+
+                "vec3 dv = texture2D( tDisplacement, uvBase ).xyz;",
+                "float df = uDisplacementScale * dv.x + uDisplacementBias;",
+                "vec3 displacedPosition = normal * df + position;",
+
+                "vec4 worldPosition = modelMatrix * vec4( displacedPosition, 1.0 );",
+                "vec4 mvPosition = modelViewMatrix * vec4( displacedPosition, 1.0 );",
+
+                "#else",
+
+                "vec4 worldPosition = modelMatrix * vec4( position, 1.0 );",
+                "vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );",
+
+                "#endif",
+
+                "gl_Position = projectionMatrix * mvPosition;",
+
+                "vViewPosition = -mvPosition.xyz;",
+
+                "vec3 normalTex = texture2D( tNormal, uvBase ).xyz * 2.0 - 1.0;",
+                "vNormal = normalMatrix * normalTex;",
+
+                "}"
+
+            ].join("\n")
+
+        }
+
+    </script>
+    <script>
+        var SCREEN_WIDTH = window.innerWidth;
+        var SCREEN_HEIGHT = window.innerHeight;
+
+        var renderer, container;
+
+        var camera, scene;
+        var cameraOrtho, sceneRenderTarget;
+
+        var heigMapMaterial, normalMapMaterial, terrainMaterial,
+            heightMap, normalMap,
+            quadTarget;
+
+        var directionalLight;
+
+        var terrain;
+
+        var clock = new THREE.Clock();
+
+        var updateNoise = true;
+
+        init();
+        animate();
+        function init() {
+
+            container = document.getElementById('app');
+            // CAMERA
+
+            camera = new THREE.PerspectiveCamera(40, SCREEN_WIDTH / SCREEN_HEIGHT, 2, 4000);
+            camera.position.set(- 1200, 800, 1200);
+
+            const controls = new THREE.OrbitControls(camera);
+
+            controls.rotateSpeed = 1.0;
+            controls.zoomSpeed = 1.2;
+            controls.panSpeed = 0.8;
+
+            // controls.keys = [ 65, 83, 68 ];
+
+            // SCENE (FINAL)
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050505);
+
+            // RENDERER
+
+            renderer = new THREE.WebGLRenderer();
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
+            container.appendChild(renderer.domElement);
+
+            // EVENTS
+
+            window.addEventListener('resize', onWindowResize, false);
+
+            // LIGHTS
+
+            addLight();
+            addTerrain();
+
+        }
+        function addLight() {
+            scene.add(new THREE.AmbientLight(0x111111));
+
+            directionalLight = new THREE.DirectionalLight(0xffffff, 1.15);
+            directionalLight.position.set(500, 2000, 0);
+            scene.add(directionalLight);
+        }
+        function addTerrain() {
+            // SCENE (RENDER TARGET)
+
+            cameraOrtho = new THREE.OrthographicCamera(SCREEN_WIDTH / - 2, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, SCREEN_HEIGHT / - 2, - 10000, 10000);
+            // cameraOrtho.position.z = 100;
+
+            scene.add(cameraOrtho);
+
+            // HEIGHT + NORMAL MAPS
+
+            var normalShader = THREE.NormalMapShader;
+
+            var rx = 256, ry = 256;
+
+            heightMap = new THREE.WebGLRenderTarget(rx, ry);
+            heightMap.texture.generateMipmaps = false;
+
+            normalMap = new THREE.WebGLRenderTarget(rx, ry);
+            normalMap.texture.generateMipmaps = false;
+
+            // TEXTURES
+
+            var loadingManager = new THREE.LoadingManager(function () {
+
+                terrain.visible = true;
+
+                updateNoise = false;
+
+            });
+            var textureLoader = new THREE.TextureLoader(loadingManager);
+
+            var diffuseTexture = textureLoader.load("textures/diffusemap.jpg");
+
+            diffuseTexture.wrapS = diffuseTexture.wrapT = THREE.RepeatWrapping;
+
+            // TERRAIN SHADER
+
+            heightMapMaterial = new THREE.ShaderMaterial({
+
+                ...HeightMapShader,
+                uniforms: {
+                    ...HeightMapShader.uniforms,
+                    scale: { value: new THREE.Vector2(20, 20) }
+                },
+                lights: false
+            });
+            normalMapMaterial = new THREE.ShaderMaterial({
+
+                ...THREE.NormalMapShader,
+                uniforms: {
+                    ...THREE.NormalMapShader.uniforms,
+                    height: { value: 0.05 },
+                    resolution: { value: new THREE.Vector2(rx, ry) },
+                    heightMap: { value: heightMap.texture }
+                },
+                lights: false
+            });
+            terrainMaterial = new THREE.ShaderMaterial({
+                ...TerrainShader,
+                uniforms: {
+                    ...TerrainShader.uniforms,
+                    tNormal: { value: normalMap.texture },
+                    uNormalScale: { value: 3.5 },
+                    tDisplacement: { value: heightMap.texture },
+                    tDiffuse: { value: diffuseTexture },
+                    uDisplacementScale: { value: 75 },
+                    specular: { value: new THREE.Color(0xcc3333) },
+                    uRepeatOverlay: { value: new THREE.Vector2(6, 6) },
+                },
+                lights: true
+            });
+            const plane = new THREE.PlaneBufferGeometry(SCREEN_WIDTH, SCREEN_HEIGHT);
+
+            const noise = new THREE.Mesh(plane, heightMapMaterial);
+            scene.add(noise);
+            renderer.setRenderTarget(heightMap);
+            renderer.clear();
+            renderer.render(scene, cameraOrtho);
+            noise.visible = false;
+
+            const noiseNormal = new THREE.Mesh(plane, normalMapMaterial);
+            scene.add(noiseNormal);
+            renderer.setRenderTarget(normalMap);
+            renderer.clear();
+            renderer.render(scene, cameraOrtho);
+            noiseNormal.visible = false;
+            // TERRAIN MESH
+
+            var geometryTerrain = new THREE.PlaneBufferGeometry(2000, 2000, 256, 256);
+
+            // THREE.BufferGeometryUtils.computeTangents( geometryTerrain );
+
+            terrain = new THREE.Mesh(geometryTerrain, terrainMaterial);
+            terrain.position.set(0, - 125, 0);
+            terrain.rotation.x = - Math.PI / 2;
+            terrain.visible = false;
+            scene.add(terrain);
+        }
+        //
+
+        function onWindowResize() {
+
+            SCREEN_WIDTH = window.innerWidth;
+            SCREEN_HEIGHT = window.innerHeight;
+
+            renderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
+
+            camera.aspect = SCREEN_WIDTH / SCREEN_HEIGHT;
+            camera.updateProjectionMatrix();
+
+        }
+
+        //
+
+        function animate() {
+
+            requestAnimationFrame(animate);
+
+            render();
+            renderer.setRenderTarget(null);
+            renderer.render(scene, camera);
+
+        }
+
+        function render() {
+
+            var delta = clock.getDelta();
+
+            if (terrain.visible) {
+
+                if (updateNoise) {
+
+                    quadTarget.material = heightMapMaterial;
+                    renderer.setRenderTarget(heightMap);
+                    renderer.clear();
+                    renderer.render(sceneRenderTarget, cameraOrtho);
+                    quadTarget.material = normalMapMaterial;
+                    renderer.setRenderTarget(normalMap);
+                    renderer.clear();
+                    renderer.render(sceneRenderTarget, cameraOrtho);
+                    updateNoise = false;
+                }
+
+
+            }
+
+        }
+
+    </script>
+
+</body>
+
+</html>
